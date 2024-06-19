@@ -219,7 +219,7 @@
         scene.add(directionalLight);
 
         const loaderThree = new GLTFLoader();
-        loaderThree.load('3dmodel/car.glb', function (gltf) {
+        loaderThree.load('3d/car.glb', function (gltf) {
           model = gltf.scene;
 
           model.traverse((child) => {
