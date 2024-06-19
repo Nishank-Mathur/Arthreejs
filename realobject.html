@@ -1,135 +1,357 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <title>Three js</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <style>
-        body {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            padding: 0;
-            margin: 0;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Object Detection and 3D Model Loading</title>
+  <!-- Load TensorFlow.js and COCO-SSD model -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
 
-        .annotation {
-            position: absolute;
-            background-color: rgba(255, 255, 255, 0.8);
-            padding: 5px;
-            border-radius: 5px;
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-        }
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f4;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+    }
 
-        img {
-            width: 60px !important;
-        }
+    h1 {
+      color: #333;
+    }
 
-        /* Custom button style */
-        #interiorViewButton {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            z-index: 1000;
-        }
-    </style>
+    button {
+      padding: 10px 20px;
+      margin: 20px 10px;
+      font-size: 16px;
+      /*display: none;*/
+    }
 
+    #arButton {
+      display: none;
+      position: absolute;
+      bottom: 20px;
+    }
+
+    #load3DModelButton {
+      display: none;
+    }
+
+    .container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    #videoElement,
+    #canvas {
+      margin: 10px;
+      background: transparent;
+      position: absolute;
+      top: 0;
+    }
+
+    #canvas {
+      width: 600px !important;
+      height: 500px !important;
+      margin: -20px;
+    }
+
+
+    #startButton {
+      display: block;
+    }
+
+    .loader {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-left-color: #3498db;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: none;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: translate(-50%, -50%) rotate(0deg);
+      }
+
+      100% {
+        transform: translate(-50%, -50%) rotate(360deg);
+      }
+    }
+  </style>
 </head>
 
 <body>
-    <button id="interiorViewButton">View Interior</button>
-    <script async src="https://ga.jspm.io/npm:es-module-shims@1.10.0/dist/es-module-shims.js"></script>
+  <button id="startButton">Start Object Detection</button>
+  <button id="load3DModelButton">Load 3D Model</button>
+  <button id="arButton">View in AR</button>
+  <div class="container" id="objectcontainer">
+    <video id="videoElement" width="600" height="500" autoplay muted></video>
+    <canvas id="canvas" width="600" height="500"></canvas>
+  </div>
 
-    <script type="importmap">
-        {
-          "imports": {
-            "three": "https://unpkg.com/three@0.145.0/build/three.module.js"
-          } 
+  <!-- Loader element -->
+  <div class="loader" id="loader"></div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./build/three.module.js",
+        "three/addons/": "./jsm/"
+      }
+    }
+  </script>
+
+  <script type="module">
+
+    import * as THREE from 'three';
+    import { ARButton } from 'three/addons/webxr/ARButton.js';
+
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+    import { RoughnessMipmapper } from 'three/addons/utils/RoughnessMipmapper.js';
+
+    document.getElementById('startButton').addEventListener('click', startObjectDetection);
+    document.getElementById('load3DModelButton').addEventListener('click', load3DModel);
+
+
+    let model = null;
+    let xrSession = null;
+
+
+    let container, scene, renderer, controller, camera, Viewloader;
+
+    let current_object, controls;
+
+    async function startObjectDetection() {
+      const videoElement = document.getElementById('videoElement');
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+
+      const constraints = {
+        video: {
+          facingMode: 'user'
+        },
+        audio: false
+      };
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        videoElement.srcObject = stream;
+
+        const model = await cocoSsd.load();
+
+        videoElement.onloadedmetadata = () => {
+          canvas.width = videoElement.videoWidth;
+          canvas.height = videoElement.videoHeight;
+          detectFrame(videoElement, model);
+        };
+      } catch (error) {
+        console.error('Error accessing the camera', error);
+      }
+    }
+
+    async function detectFrame(video, model) {
+      const predictions = await model.detect(video);
+      renderPredictions(predictions);
+
+      let personDetected = false;
+
+      predictions.forEach(prediction => {
+        if (prediction.class === 'person') {
+          personDetected = true;
         }
-    </script>
+      });
 
-    <script type="module">
-        import * as THREE from 'three';
-        import { OrbitControls } from 'https://unpkg.com/three@0.145.0/examples/jsm/controls/OrbitControls.js';
-        import { GLTFLoader } from 'https://unpkg.com/three@0.145.0/examples/jsm/loaders/GLTFLoader.js';
-        import { ARButton } from 'https://unpkg.com/three@0.145.0/examples/jsm/webxr/ARButton.js';
+      if (personDetected) {
+        document.getElementById('load3DModelButton').style.display = 'inline-block';
+        document.getElementById('startButton').style.display = 'none';
+      } else {
+        document.getElementById('load3DModelButton').style.display = 'none';
+        document.getElementById('startButton').style.display = 'none';
+      }
 
+      requestAnimationFrame(() => detectFrame(video, model));
+    }
+
+    function renderPredictions(predictions) {
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const font = '16px sans-serif';
+      ctx.font = font;
+      ctx.textBaseline = 'top';
+
+      predictions.forEach(prediction => {
+        const [x, y, width, height] = prediction.bbox;
+        const textWidth = ctx.measureText(prediction.class).width;
+        const textHeight = parseInt(font, 10);
+
+        ctx.strokeStyle = '#00FFFF';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(x, y, width, height);
+
+        ctx.fillStyle = '#00FFFF';
+        ctx.fillRect(x, y, textWidth + 4, textHeight + 4);
+      });
+
+      predictions.forEach(prediction => {
+        const [x, y] = prediction.bbox;
+        ctx.fillStyle = '#000000';
+        ctx.fillText(prediction.class, x, y);
+      });
+    }
+
+    async function load3DModel() {
+      document.getElementById('load3DModelButton').style.display = 'none!important';
+      document.getElementById('startButton').style.display = 'none';
+      document.getElementById('objectcontainer').style.display = 'none';
+
+      Viewloader = document.getElementById('loader');
+      Viewloader.style.display = 'block';
+
+      setTimeout(async () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.xr.enabled = true; // Enable WebXR
+        renderer.setAnimationLoop(animate);
+        renderer.xr.enabled = true;
         container.appendChild(renderer.domElement);
 
-        document.body.appendChild(ARButton.createButton(renderer));
 
-        const scene = new THREE.Scene();
+        scene = new THREE.Scene();
         //scene.background = new THREE.Color(0xdddddd);
 
-        const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(5, 5, 2);
+        camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
+        //camera.position.set(5, 5, 2);
+        camera.position.set(2, 2, 2);
 
-        const ambientLight = new THREE.AmbientLight(0xffffff, 1);
-        scene.add(ambientLight);
+        const AmbientLight = new THREE.AmbientLight(0xffffff, 1);
+        scene.add(AmbientLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-        directionalLight.position.set(1, 1, 0).normalize();
-        scene.add(directionalLight);
+        const DirectionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        DirectionalLight.position.set(1, 1, 0).normalize();
+        scene.add(DirectionalLight);
 
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.target.set(0, 0, 0);
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableZoom = true;
+        //controls.target.set(0, 0, 0);
         controls.update();
-
-        let model;
 
         const loader = new GLTFLoader();
         loader.load('3d/car.glb', function (gltf) {
-            model = gltf.scene;
-            model.position.set(0, 0, 0);
-            model.scale.set(1.5, 1.5, 1.5);
-            scene.add(model);
-            renderer.render(scene, camera);
-        }, undefined, function (error) {
-            console.error(error);
-        });
+          model = gltf.scene;
+          model.position.set(0, 0, 0); // Position the model 1 meter in front of the camera
+          model.scale.set(0.2, 0.2, 0.2);
 
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        function toggleInteriorView() {
-            if (model) {
-                const interiorPosition = new THREE.Vector3(0, 1, 0); // Adjust position as needed
-                camera.position.set(0, 1, 0.5); // Move the camera inside the car
-                controls.target.copy(interiorPosition);
-                controls.update();
+          model.traverse((child) => {
+            if (child.isMesh && child.material.name === 'M4xNME_GlassClear') {
+              child.material.transparent = true;
+              child.material.opacity = 0.3;
+              child.material.blending = THREE.NormalBlending;
             }
-        }
+          });
 
-        document.getElementById('interiorViewButton').addEventListener('click', toggleInteriorView);
+          scene.add(model);
 
-        function animate() {
-            renderer.setAnimationLoop(() => {
-                controls.update();
-                renderer.render(scene, camera);
-            });
-        }
+          render();
+        }, undefined, function (error) {
+          console.error(error);
+        });
+
+
+        // Resize handler
+        window.addEventListener('resize', onWindowResize, false);
+
+
+
+
+        Viewloader.style.display = 'none';
+
+        const arButton = ARButton.createButton(renderer, { sessionInit: { requiredFeatures: ['local-floor', 'bounded-floor'] } });
+
+        document.body.appendChild(arButton);
 
         animate();
-    </script>
 
+        container.addEventListener('touchstart', function (e) {
+          e.preventDefault();
+          touchDown = true;
+          touchX = e.touches[0].pageX;
+          touchY = e.touches[0].pageY;
+        }, false);
+
+        container.addEventListener('touchend', function (e) {
+          e.preventDefault();
+          touchDown = false;
+        }, false);
+
+        container.addEventListener('touchmove', function (e) {
+          e.preventDefault();
+          if (!touchDown) {
+            return;
+          }
+
+          deltaX = e.touches[0].pageX - touchX;
+          deltaY = e.touches[0].pageY - touchY;
+          touchX = e.touches[0].pageX;
+          touchY = e.touches[0].pageY;
+
+          rotateObject();
+        }, false);
+
+      }, 2000);
+    }
+
+    let touchDown, touchX, touchY, deltaX, deltaY;
+
+    function rotateObject() {
+      if (model) {
+        model.rotation.y += deltaX / 100; // Adjust rotation speed
+        model.rotation.x += deltaY / 100; // Added rotation on x-axis for better control
+      }
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // Render loop
+    function animate() {
+      renderer.setAnimationLoop(render);
+      requestAnimationFrame(animate);
+      controls.update();
+    }
+
+
+    function render() {
+      renderer.render(scene, camera);
+    }
+
+
+
+  </script>
 </body>
 
 </html>
