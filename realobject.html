@@ -131,11 +131,7 @@
 
     let model = null;
     let xrSession = null;
-    let touchDown = false;
-    let touchX = 0;
-    let touchY = 0;
-    let deltaX = 0;
-    let deltaY = 0;
+
 
     let container, scene, renderer, controller, camera, Viewloader;
 
@@ -287,16 +283,49 @@
 
 
         animate();
+
         Viewloader.style.display = 'none';
+
         const arButton = ARButton.createButton(renderer, { sessionInit: { requiredFeatures: ['local-floor', 'bounded-floor'] } });
+
         document.body.appendChild(arButton);
 
-        container.addEventListener('touchstart', onTouchStart, false);
-        container.addEventListener('touchmove', onTouchMove, false);
+        renderer.domElement.addEventListener('touchstart', function (e) {
+          e.preventDefault();
+          touchDown = true;
+          touchX = e.touches[0].pageX;
+          touchY = e.touches[0].pageY;
+        }, false);
+
+        renderer.domElement.addEventListener('touchend', function (e) {
+          e.preventDefault();
+          touchDown = true;
+          //touchX = e.touches[0].pageX;
+          //touchY = e.touches[0].pageY;
+        }, false);
+
+        renderer.domElement.addEventListener('touchmove', function (e) {
+          e.preventDefault();
+          if (!touchDown) {
+            return;
+          }
+
+          deltaX = e.touches[0].pageX - touchX;
+          deltaY = e.touches[0].pageY - touchY;
+          touchX = e.touches[0].pageX;
+          touchY = e.touches[0].pageY;
+
+          rotateObject();
+        }, false);
 
       }, 2000);
     }
 
+    let touchDown, touchX, touchY, deltaX, deltaY;
+
+    function rotateObject() {
+      model.rotation.y += deltaX / 100;
+    }
 
     function onWindowResize() {
       camera.aspect = window.innerWidth / window.innerHeight;
@@ -307,35 +336,16 @@
     // Render loop
     function animate() {
       renderer.setAnimationLoop(render);
+      requestAnimationFrame(animate);
+      controls.update();
     }
 
+
     function render() {
-      if (model) {
-        // Optional: add some rotation for demonstration
-        model.rotation.y += 0.01;
-      }
       renderer.render(scene, camera);
     }
 
-    // Touch controls for rotating the model
-    let lastX, lastY;
-    function onTouchStart(event) {
-      lastX = event.touches[0].clientX;
-      lastY = event.touches[0].clientY;
-    }
 
-    function onTouchMove(event) {
-      const deltaX = event.touches[0].clientX - lastX;
-      const deltaY = event.touches[0].clientY - lastY;
-
-      if (model) {
-        model.rotation.y += deltaX * 0.005;
-        model.rotation.x += deltaY * 0.005;
-      }
-
-      lastX = event.touches[0].clientX;
-      lastY = event.touches[0].clientY;
-    }
 
   </script>
 </body>
