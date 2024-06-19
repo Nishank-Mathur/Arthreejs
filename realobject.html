@@ -1,14 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Object Detection and 3D Model Loading</title>
-  <!-- Load TensorFlow.js and COCO-SSD model -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.145.0/build/three.module.js",
+        "three/examples/jsm/loaders/GLTFLoader.js": "https://unpkg.com/three@0.145.0/examples/jsm/loaders/GLTFLoader.js",
+        "three/examples/jsm/controls/OrbitControls.js": "https://unpkg.com/three@0.145.0/examples/jsm/controls/OrbitControls.js"
+      }
+    }
+  </script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -18,7 +24,6 @@
       background-color: #f4f4f4;
       width: 100%;
       height: 100vh;
-      overflow: hidden;
     }
 
     h1 {
@@ -29,16 +34,6 @@
       padding: 10px 20px;
       margin: 20px 10px;
       font-size: 16px;
-      /*display: none;*/
-    }
-
-    #arButton {
-      display: none;
-      position: absolute;
-      bottom: 20px;
-    }
-
-    #load3DModelButton {
       display: none;
     }
 
@@ -63,6 +58,11 @@
       margin: -20px;
     }
 
+    #modelContainer {
+      width: 500px;
+      height: 400px;
+      margin: 20px auto;
+    }
 
     #startButton {
       display: block;
@@ -95,46 +95,30 @@
 </head>
 
 <body>
+  <h1>Real-time Object Detection</h1>
   <button id="startButton">Start Object Detection</button>
   <button id="load3DModelButton">Load 3D Model</button>
   <button id="arButton">View in AR</button>
-  <div class="container" id="objectcontainer">
+  <div class="container" id="container">
     <video id="videoElement" width="600" height="500" autoplay muted></video>
     <canvas id="canvas" width="600" height="500"></canvas>
   </div>
 
-  <!-- Loader element -->
+  <div id="modelContainer"></div>
+
   <div class="loader" id="loader"></div>
 
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "./build/three.module.js",
-        "three/addons/": "./jsm/"
-      }
-    }
-  </script>
-
   <script type="module">
-
     import * as THREE from 'three';
-    import { ARButton } from 'three/addons/webxr/ARButton.js';
-
-    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-    import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
-    import { RoughnessMipmapper } from 'three/addons/utils/RoughnessMipmapper.js';
+    import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+    import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
     document.getElementById('startButton').addEventListener('click', startObjectDetection);
     document.getElementById('load3DModelButton').addEventListener('click', load3DModel);
-
+    document.getElementById('arButton').addEventListener('click', startARSession);
 
     let model = null;
     let xrSession = null;
-    let container, camera, scene, renderer;
-    let current_object, controls, reticle;
-    let hitTestSource = null;
-    let hitTestSourceRequested = false;
 
     async function startObjectDetection() {
       const videoElement = document.getElementById('videoElement');
@@ -168,21 +152,11 @@
       const predictions = await model.detect(video);
       renderPredictions(predictions);
 
-      let personDetected = false;
-
       predictions.forEach(prediction => {
         if (prediction.class === 'person') {
-          personDetected = true;
+          document.getElementById('load3DModelButton').style.display = 'inline-block';
         }
       });
-
-      if (personDetected) {
-        document.getElementById('load3DModelButton').style.display = 'inline-block';
-        document.getElementById('startButton').style.display = 'none';
-      } else {
-        document.getElementById('load3DModelButton').style.display = 'none';
-        document.getElementById('startButton').style.display = 'none';
-      }
 
       requestAnimationFrame(() => detectFrame(video, model));
     }
@@ -218,146 +192,173 @@
     }
 
     function load3DModel() {
-      // Hide buttons and container
-      document.getElementById('load3DModelButton').style.display = 'none';
-      document.getElementById('startButton').style.display = 'none';
-      document.getElementById('objectcontainer').style.display = 'none';
+      document.getElementById('container').style.display = 'none';
+      const loader = document.getElementById('loader');
+      loader.style.display = 'block';
 
-      // Create scene
-      scene = new THREE.Scene();
-      camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 2000);
-      camera.position.set(2, 2, 2);
+      setTimeout(async () => {
+        const container = document.getElementById('modelContainer');
+        container.innerHTML = '';
 
-      // Lighting
-      const AmbientLight = new THREE.AmbientLight(0xffffff, 1);
-      scene.add(AmbientLight);
+        const scene = new THREE.Scene();
+        const modelRenderer = new THREE.WebGLRenderer({ alpha: true });
+        modelRenderer.setSize(container.clientWidth, container.clientHeight);
+        container.appendChild(modelRenderer.domElement);
 
-      const DirectionalLight = new THREE.DirectionalLight(0xffffff, 1);
-      DirectionalLight.position.set(1, 1, 0).normalize();
-      scene.add(DirectionalLight);
+        const camera = new THREE.PerspectiveCamera(70, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.z = 5;
 
-      // Renderer
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      renderer.setPixelRatio(window.devicePixelRatio);
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.xr.enabled = true;
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
 
-      // Add renderer to the DOM
-      document.body.appendChild(renderer.domElement);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(0, 4, 2).normalize();
+        scene.add(directionalLight);
 
-      // Load the GLTF model
-      const loader = new GLTFLoader();
-      loader.load('3d/car.glb', function (gltf) {
-        current_object = gltf.scene;
-        current_object.scale.set(0.2, 0.2, 0.2); // Adjust model size
-        scene.add(current_object);
-        render();
-      }, undefined, function (error) {
-        console.error('Error loading the GLTF model:', error);
-      });
+        const loaderThree = new GLTFLoader();
+        loaderThree.load('3dmodel/car.glb', function (gltf) {
+          model = gltf.scene;
 
-      // Orbit Controls
-      controls = new OrbitControls(camera, renderer.domElement);
-      controls.addEventListener('change', render);
-      controls.minDistance = 2;
-      controls.maxDistance = 10;
-      controls.target.set(0, 0, -0.2);
-      controls.enableDamping = true;
-      controls.dampingFactor = 0.05;
+          model.traverse((child) => {
+            if (child.isMesh && child.material.name === 'M4xNME_GlassClear') {
+              child.material.transparent = true;
+              child.material.opacity = 0.3;
+              child.material.blending = THREE.NormalBlending;
+            }
+          });
 
-      // Initialize ARButton
-      document.body.appendChild(ARButton.createButton(renderer, {
-        requiredFeatures: ['hit-test'],
-        optionalFeatures: ['dom-overlay'],
-        domOverlay: { root: document.getElementById('content') }
-      }));
+          scene.add(model);
 
-      reticle = new THREE.Mesh(
-        new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2),
-        new THREE.MeshBasicMaterial({ color: 0x0000ff })
-      );
-      reticle.matrixAutoUpdate = false;
-      reticle.visible = false;
-      scene.add(reticle);
+          const controls = new OrbitControls(camera, modelRenderer.domElement);
+          controls.enableDamping = true;
+          controls.dampingFactor = 0.25;
+          controls.screenSpacePanning = false;
+          controls.maxPolarAngle = Math.PI / 2;
 
-      // Handle window resize
-      window.addEventListener('resize', onWindowResize);
+          const animate = function () {
+            requestAnimationFrame(animate);
+            controls.update();
+            modelRenderer.render(scene, camera);
+          };
+          animate();
 
-      // Start rendering loop
-      renderer.setAnimationLoop(render);
+          loader.style.display = 'none';
+          document.getElementById('load3DModelButton').style.display = 'none';
+        });
 
-      // Touch event handling
-      let touchDown = false, touchX = 0, touchY = 0, deltaX = 0, deltaY = 0;
-      renderer.domElement.addEventListener('touchstart', function (e) {
-        e.preventDefault();
-        touchDown = true;
-        touchX = e.touches[0].pageX;
-        touchY = e.touches[0].pageY;
-      }, false);
-      renderer.domElement.addEventListener('touchend', function (e) {
-        e.preventDefault();
-        touchDown = false;
-      }, false);
-      renderer.domElement.addEventListener('touchmove', function (e) {
-        e.preventDefault();
-        if (!touchDown) return;
-        deltaX = e.touches[0].pageX - touchX;
-        deltaY = e.touches[0].pageY - touchY;
-        touchX = e.touches[0].pageX;
-        touchY = e.touches[0].pageY;
-        rotateObject();
-      }, false);
+        document.getElementById('arButton').style.display = 'inline-block';
+      }, 2000);
+    }
 
-      function rotateObject() {
-        if (current_object && reticle.visible) {
-          current_object.rotation.y += deltaX / 100;
-        }
+    async function startARSession() {
+      if (!navigator.xr) {
+        alert('WebXR not supported in your browser.');
+        return;
       }
-    }
 
-    function onWindowResize() {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    }
+      try {
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl', { xrCompatible: true });
 
-    function render(timestamp, frame) {
-      if (frame) {
-        const referenceSpace = renderer.xr.getReferenceSpace();
-        const session = renderer.xr.getSession();
+        const session = await navigator.xr.requestSession('immersive-ar', { requiredFeatures: ['local-floor'] });
 
-        if (!hitTestSourceRequested) {
-          session.requestReferenceSpace('viewer').then(refSpace => {
-            session.requestHitTestSource({ space: refSpace }).then(source => {
-              hitTestSource = source;
-            });
-          });
+        const xrLayer = new XRWebGLLayer(session, gl);
+        session.updateRenderState({ baseLayer: xrLayer });
 
-          session.addEventListener('end', () => {
-            hitTestSourceRequested = false;
-            hitTestSource = null;
-            reticle.visible = false;
-          });
+        const xrRefSpace = await session.requestReferenceSpace('local-floor');
 
-          hitTestSourceRequested = true;
+        if (!model) {
+          await load3DModel();
         }
 
-        if (hitTestSource) {
-          const hitTestResults = frame.getHitTestResults(hitTestSource);
-          if (hitTestResults.length) {
-            const hit = hitTestResults[0];
-            reticle.visible = true;
-            reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
-          } else {
-            reticle.visible = false;
+        const scene = new THREE.Scene();
+        if (model) {
+          model.scale.set(0.5, 0.5, 0.5);
+          scene.add(model);
+        }
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(0, 4, 2).normalize();
+        scene.add(directionalLight);
+
+        const camera = new THREE.PerspectiveCamera(70, canvas.width / canvas.height, 0.1, 1000);
+
+        const renderer = new THREE.WebGLRenderer({ context: gl });
+        renderer.autoClear = false;
+        renderer.setSize(canvas.width, canvas.height);
+
+        let lastTouch = null;
+
+        const onXRFrame = (time, frame) => {
+          session.requestAnimationFrame(onXRFrame);
+
+          const pose = frame.getViewerPose(xrRefSpace);
+          if (pose) {
+            const glLayer = session.renderState.baseLayer;
+            gl.bindFramebuffer(gl.FRAMEBUFFER, glLayer.framebuffer);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+            const view = pose.views[0];
+            const viewport = glLayer.getViewport(view);
+
+            gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+
+            const cameraMatrix = new THREE.Matrix4();
+            cameraMatrix.fromArray(view.transform.inverse.matrix);
+            camera.projectionMatrix.fromArray(view.projectionMatrix);
+            camera.matrixWorld.copy(cameraMatrix).invert();
+            camera.matrixWorldNeedsUpdate = true;
+
+            renderer.render(scene, camera);
           }
-        }
-      }
+        };
 
-      renderer.render(scene, camera);
+        session.requestAnimationFrame(onXRFrame);
+        session.addEventListener('end', onSessionEnd);
+
+        canvas.addEventListener('touchstart', onTouchStart, false);
+        canvas.addEventListener('touchmove', onTouchMove, false);
+        canvas.addEventListener('touchend', onTouchEnd, false);
+
+        xrSession = session;
+
+        document.getElementById('arButton').style.display = 'none';
+      } catch (error) {
+        console.error('Error starting AR session:', error);
+      }
     }
 
+    function onSessionEnd() {
+      xrSession = null;
+      document.getElementById('arButton').style.display = 'inline-block';
+    }
+
+    function onTouchStart(event) {
+      if (event.touches.length === 1) {
+        lastTouch = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+      }
+    }
+
+    function onTouchMove(event) {
+      if (event.touches.length === 1 && lastTouch) {
+        const touch = event.touches[0];
+        const deltaX = touch.clientX - lastTouch.x;
+        const deltaY = touch.clientY - lastTouch.y;
+
+        if (model) {
+          model.rotation.y += deltaX * 0.01; // Rotate model based on touch movement
+        }
+
+        lastTouch = { x: touch.clientX, y: touch.clientY };
+      }
+    }
+
+    function onTouchEnd() {
+      lastTouch = null;
+    }
   </script>
 </body>
-
 </html>
