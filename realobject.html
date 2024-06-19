@@ -227,9 +227,9 @@
       document.getElementById('objectcontainer').style.display = 'none';
 
       Viewloader = document.getElementById('loader');
-      Viewloader.style.display = 'block';
+      //Viewloader.style.display = 'block';
 
-      setTimeout(async () => {
+      //setTimeout(async () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
 
@@ -286,7 +286,7 @@
         animate();
         Viewloader.style.display = 'none';
         document.body.appendChild(ARButton.createButton(renderer));
-      }, 2000);
+     // }, 2000);
     }
 
 
