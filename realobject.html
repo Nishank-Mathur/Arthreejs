@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -227,9 +228,9 @@
       document.getElementById('objectcontainer').style.display = 'none';
 
       Viewloader = document.getElementById('loader');
-      //Viewloader.style.display = 'block';
+      Viewloader.style.display = 'block';
 
-      //setTimeout(async () => {
+      setTimeout(async () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
 
@@ -260,8 +261,8 @@
         const loader = new GLTFLoader();
         loader.load('3d/car.glb', function (gltf) {
           model = gltf.scene;
-          model.position.set(0, 0, 0);
-          model.scale.set(1, 1, 1);
+          model.position.set(0, 0, -1); // Position the model 1 meter in front of the camera
+          model.scale.set(0.5, 0.5, 0.5);
 
           model.traverse((child) => {
             if (child.isMesh && child.material.name === 'M4xNME_GlassClear') {
@@ -285,8 +286,13 @@
 
         animate();
         Viewloader.style.display = 'none';
-        document.body.appendChild(ARButton.createButton(renderer));
-     // }, 2000);
+        const arButton = ARButton.createButton(renderer, { sessionInit: { requiredFeatures: ['local-floor', 'bounded-floor'] } });
+        document.body.appendChild(arButton);
+
+        container.addEventListener('touchstart', onTouchStart, false);
+        container.addEventListener('touchmove', onTouchMove, false);
+
+      }, 2000);
     }
 
 
@@ -298,9 +304,35 @@
 
     // Render loop
     function animate() {
-      requestAnimationFrame(animate);
-      controls.update();
+      renderer.setAnimationLoop(render);
+    }
+
+    function render() {
+      if (model) {
+        // Optional: add some rotation for demonstration
+        model.rotation.y += 0.01;
+      }
       renderer.render(scene, camera);
+    }
+
+    // Touch controls for rotating the model
+    let lastX, lastY;
+    function onTouchStart(event) {
+      lastX = event.touches[0].clientX;
+      lastY = event.touches[0].clientY;
+    }
+
+    function onTouchMove(event) {
+      const deltaX = event.touches[0].clientX - lastX;
+      const deltaY = event.touches[0].clientY - lastY;
+
+      if (model) {
+        model.rotation.y += deltaX * 0.005;
+        model.rotation.x += deltaY * 0.005;
+      }
+
+      lastX = event.touches[0].clientX;
+      lastY = event.touches[0].clientY;
     }
 
   </script>
