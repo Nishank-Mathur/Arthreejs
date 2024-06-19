@@ -6,14 +6,7 @@
   <title>Object Detection and 3D Model Loading</title>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://unpkg.com/three@0.145.0/build/three.module.js",
-        "three/examples/jsm/loaders/GLTFLoader.js": "https://unpkg.com/three@0.145.0/examples/jsm/loaders/GLTFLoader.js",
-        "three/examples/jsm/controls/OrbitControls.js": "https://unpkg.com/three@0.145.0/examples/jsm/controls/OrbitControls.js"
-      }
-    }
+
   </script>
   <style>
     body {
@@ -108,10 +101,20 @@
 
   <div class="loader" id="loader"></div>
 
+ <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.146.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.146.0/examples/jsm/"
+      }
+    }
+  </script>
+
   <script type="module">
     import * as THREE from 'three';
-    import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-    import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+    import { ARButton } from 'three/addons/webxr/ARButton.js';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
     document.getElementById('startButton').addEventListener('click', startObjectDetection);
     document.getElementById('load3DModelButton').addEventListener('click', load3DModel);
