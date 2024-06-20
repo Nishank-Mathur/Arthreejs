@@ -18,6 +18,8 @@
 <body>
 	<button id="arButton">Enter AR</button>
 	<canvas id="xrCanvas"></canvas>
+
+
 	<script src="https://cdn.jsdelivr.net/npm/hammerjs@latest/hammer.min.js"></script>
 
 	<!-- WebXR Polyfill -->
@@ -39,7 +41,6 @@
 
 		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 		import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-
 
 		let xrSession = null;
 		let xrRefSpace = null;
@@ -121,50 +122,51 @@
 			const loader = new GLTFLoader();
 			loader.load('3d/car.glb', function (gltf) {
 				model = gltf.scene;
-				model.scale.set(0.01, 0.01, 0.01); // Adjust scale to fit in the view
-				model.position.set(0, 0, 0); // Adjust position (x, y, z)
-
+				model.scale.set(0.1, 0.1, 0.1); // Adjust scale as needed
 				scene.add(model);
 
-				// Initialize Hammer.js for touch interaction
+				// Setup Hammer.js for touch interaction
 				setupHammer(renderer.domElement);
+			}, undefined, function (error) {
+				console.error('An error happened while loading the model:', error); // Error handling
 			});
 		}
 
-		function setupHammer(canvas) {
-			// Create a Hammer.js instance
-			const hammer = new Hammer(canvas);
+		function setupHammer(element) {
+			const hammer = new Hammer(element);
 
-			// Enable panning
+			// Enable panning and pinching
 			hammer.get('pan').set({ direction: Hammer.DIRECTION_ALL });
-
-			// Handle panning
-			hammer.on('panmove', (event) => {
-				if (model) {
-					model.rotation.y += event.deltaX * 0.005; // Rotate model horizontally
-					model.rotation.x += event.deltaY * 0.005; // Rotate model vertically
-				}
-			});
-
-			// Enable pinch
 			hammer.get('pinch').set({ enable: true });
 
-			// Handle pinching
+			// Variables for panning
+			let initialPanX = 0;
+			let initialPanY = 0;
+
+			// Variables for pinching
 			let initialScale = 1;
+
+			// Handle panning
+			hammer.on('panstart', (event) => {
+				initialPanX = model.rotation.y;
+				initialPanY = model.rotation.x;
+			});
+
+			hammer.on('panmove', (event) => {
+				model.rotation.y = initialPanX + event.deltaX * 0.005; // Adjust rotation speed
+				model.rotation.x = initialPanY + event.deltaY * 0.005;
+			});
+
+			// Handle pinching
 			hammer.on('pinchstart', () => {
-				if (model) {
-					initialScale = model.scale.x; // Assume uniform scaling
-				}
+				initialScale = model.scale.x; // Assuming uniform scaling
 			});
 
 			hammer.on('pinchmove', (event) => {
-				if (model) {
-					const newScale = initialScale * event.scale;
-					model.scale.set(newScale, newScale, newScale); // Apply new scale uniformly
-				}
+				const newScale = initialScale * event.scale;
+				model.scale.set(newScale, newScale, newScale); // Apply new scale uniformly
 			});
 		}
-
 	</script>
 </body>
 
