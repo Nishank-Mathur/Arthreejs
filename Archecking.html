@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>WebXR AR Example</title>
+	<style>
+		#arButton {
+			position: absolute;
+			top: 20px;
+			left: 20px;
+			z-index: 1;
+		}
+	</style>
+</head>
+
+<body>
+	<button id="arButton">Enter AR</button>
+	<canvas id="xrCanvas"></canvas>
+
+	<!-- WebXR Polyfill -->
+	<script src="https://cdn.jsdelivr.net/npm/webxr-polyfill@latest/build/webxr-polyfill.min.js"></script>
+	<!-- Your AR script -->
+	<script type="importmap">
+		{
+			"imports": {
+				"three": "./build/three.module.js",
+				"three/addons/": "./jsm/"
+			}
+		}
+	</script>
+
+	<script type="module">
+
+		import * as THREE from 'three';
+		import { ARButton } from 'three/addons/webxr/ARButton.js';
+
+		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+		import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+
+		// Check for WebXR support
+		if (navigator.xr) {
+			navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+				if (supported) {
+					document.getElementById('arButton').style.display = 'block';
+					document.getElementById('arButton').addEventListener('click', onButtonClicked);
+				}
+			});
+		}
+
+		let xrSession = null;
+		let xrRefSpace = null;
+		let gl = null;
+		let renderer = null;
+		let scene = null;
+		let camera = null;
+		let model = null;
+		let controls = null;
+
+		// Check for WebXR support
+		if (navigator.xr) {
+			navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+				if (supported) {
+					document.getElementById('arButton').style.display = 'block';
+					document.getElementById('arButton').addEventListener('click', onButtonClicked);
+				}
+			});
+		}
+
+		function onButtonClicked() {
+			navigator.xr.requestSession('immersive-ar', {
+				requiredFeatures: ['local']
+			}).then(onSessionStarted);
+		}
+
+		function onSessionStarted(session) {
+			xrSession = session;
+			xrSession.addEventListener('end', onSessionEnded);
+
+			let canvas = document.getElementById('xrCanvas');
+			gl = canvas.getContext('webgl', { xrCompatible: true });
+
+			renderer = new THREE.WebGLRenderer({ canvas: canvas, context: gl });
+			renderer.autoClear = false;
+
+			scene = new THREE.Scene();
+
+			camera = new THREE.PerspectiveCamera();
+			scene.add(camera);
+
+			loadModel();
+
+			// Add OrbitControls
+			controls = new OrbitControls(camera, renderer.domElement);
+
+			// Enable damping (inertia)
+			controls.enableDamping = true;
+			controls.dampingFactor = 0.25;
+
+			xrSession.updateRenderState({ baseLayer: new XRWebGLLayer(xrSession, gl) });
+
+			xrSession.requestReferenceSpace('local').then((refSpace) => {
+				xrRefSpace = refSpace;
+				xrSession.requestAnimationFrame(onXRFrame);
+			});
+		}
+
+		function onSessionEnded() {
+			xrSession = null;
+		}
+
+		function onXRFrame(time, frame) {
+			let session = frame.session;
+			session.requestAnimationFrame(onXRFrame);
+
+			let pose = frame.getViewerPose(xrRefSpace);
+			if (pose) {
+				let glLayer = session.renderState.baseLayer;
+
+				gl.bindFramebuffer(gl.FRAMEBUFFER, glLayer.framebuffer);
+				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+				const views = pose.views;
+				for (let view of views) {
+					let viewport = glLayer.getViewport(view);
+					renderer.setSize(viewport.width, viewport.height);
+					camera.matrix.fromArray(view.transform.matrix);
+					camera.projectionMatrix.fromArray(view.projectionMatrix);
+					camera.updateMatrixWorld(true);
+
+					controls.update(); // Update the controls before rendering
+
+					renderer.render(scene, camera);
+				}
+			}
+		}
+
+		function loadModel() {
+			const loader = new GLTFLoader();
+			loader.load('3d/car.glb', function (gltf) {
+				model = gltf.scene;
+				model.scale.set(0.1, 0.1, 0.1); // Adjust scale as needed
+				scene.add(model);
+
+				// Handle touch events for mobile
+				renderer.domElement.addEventListener('touchstart', onTouchStart, false);
+				renderer.domElement.addEventListener('touchmove', onTouchMove, false);
+				renderer.domElement.addEventListener('touchend', onTouchEnd, false);
+			});
+		}
+
+		// Touch events handlers
+		let initialTouchX = 0;
+		let initialTouchY = 0;
+
+		function onTouchStart(event) {
+			if (event.touches.length === 1) { // Single touch
+				initialTouchX = event.touches[0].clientX;
+				initialTouchY = event.touches[0].clientY;
+			}
+		}
+
+		function onTouchMove(event) {
+			if (event.touches.length === 1) { // Single touch
+				const deltaX = event.touches[0].clientX - initialTouchX;
+				const deltaY = event.touches[0].clientY - initialTouchY;
+
+				// Rotate the model based on touch move
+				model.rotation.y += deltaX * 0.005; // Adjust rotation speed
+				model.rotation.x += deltaY * 0.005;
+
+				initialTouchX = event.touches[0].clientX;
+				initialTouchY = event.touches[0].clientY;
+			}
+		}
+
+		function onTouchEnd(event) {
+			// You can add additional logic if needed when touch ends
+		}
+
+	</script>
+</body>
+
+</html>
