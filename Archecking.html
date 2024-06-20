@@ -49,6 +49,7 @@
 		let scene = null;
 		let camera = null;
 		let model = null;
+		let controls = null;
 
 		if (navigator.xr) {
 			navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
@@ -77,10 +78,28 @@
 
 			scene = new THREE.Scene();
 
-			camera = new THREE.PerspectiveCamera();
+			//camera = new THREE.PerspectiveCamera();
+			camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 1000);
 			scene.add(camera);
 
+			var directionalLight = new THREE.DirectionalLight(0xdddddd, 1);
+			directionalLight.position.set(0, 0, 1).normalize();
+			scene.add(directionalLight);
+
+			var ambientLight = new THREE.AmbientLight(0x222222);
+			scene.add(ambientLight);
+
+
 			loadModel();
+
+			controls = new OrbitControls(camera, renderer.domElement);
+			//controls.addEventListener('change', render);
+			controls.minDistance = 2;
+			controls.maxDistance = 10;
+			controls.target.set(-0.6, -0.3, -0.2);
+			controls.enableDamping = true;
+			controls.dampingFactor = 0.05;
+
 
 			xrSession.updateRenderState({ baseLayer: new XRWebGLLayer(xrSession, gl) });
 
@@ -112,6 +131,7 @@
 					camera.matrix.fromArray(view.transform.matrix);
 					camera.projectionMatrix.fromArray(view.projectionMatrix);
 					camera.updateMatrixWorld(true);
+					controls.update(); // Update the controls before rendering
 
 					renderer.render(scene, camera);
 				}
@@ -122,8 +142,16 @@
 			const loader = new GLTFLoader();
 			loader.load('3d/car.glb', function (gltf) {
 				model = gltf.scene;
-				model.position.set(0, 0, 0); // Adjust position (x, y, z)
-				model.scale.set(0.1, 0.1, 0.1); // Adjust scale as needed
+				model.scale.set(0.2, 0.2, 0.2); // Adjust scale as needed
+				//model mirror color change
+				model.traverse((child) => {
+					if (child.isMesh && child.material.name === 'M4xNME_GlassClear') {
+						child.material.transparent = true;
+						child.material.opacity = 0.3;
+						child.material.blending = THREE.NormalBlending;
+					}
+				});
+
 				scene.add(model);
 
 				// Setup Hammer.js for touch interaction
