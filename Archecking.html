@@ -122,7 +122,8 @@
 			const loader = new GLTFLoader();
 			loader.load('3d/car.glb', function (gltf) {
 				model = gltf.scene;
-				model.scale.set(0.04, 0.04, 0.04); // Adjust scale as needed
+				model.position.set(0, 0, 0); // Adjust position (x, y, z)
+				model.scale.set(0.1, 0.1, 0.1); // Adjust scale as needed
 				scene.add(model);
 
 				// Setup Hammer.js for touch interaction
