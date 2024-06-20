@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>AR Object Detection</title>
+	<style>
+		body {
+			margin: 0;
+			overflow: hidden;
+		}
+
+		#video {
+			position: absolute;
+			top: 0;
+			left: 0;
+			z-index: 1;
+		}
+
+		canvas {
+			position: absolute;
+			top: 0;
+			left: 0;
+			z-index: 2;
+		}
+
+		.ar-button {
+			position: absolute;
+			top: 20px;
+			right: 20px;
+			padding: 10px;
+			background-color: #007bff;
+			color: white;
+			cursor: pointer;
+			z-index: 3;
+			display: none;
+			/* Initially hidden */
+		}
+	</style>
+</head>
+
+<body>
+	<video id="video" width="640" height="480" autoplay></video>
+	<button class="ar-button" onclick="startAR()">Start AR</button>
+	<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+	<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+	<script src="https://docs.opencv.org/4.x/opencv.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/three@0.131.3/build/three.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/three@0.131.3/examples/js/loaders/GLTFLoader.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/three@0.131.3/examples/js/controls/OrbitControls.js"></script>
+	<script>
+		let arButton = document.querySelector('.ar-button');
+		let video = document.getElementById('video');
+		let model;
+		let session;
+
+		// Function to initialize the application
+		async function initialize() {
+			// Load TensorFlow.js and OpenCV.js
+			await Promise.all([
+				cocoSsd.load().then(m => model = m),
+				new Promise(resolve => cv['onRuntimeInitialized'] = resolve)
+			]);
+
+			// Show AR button after initialization
+			arButton.style.display = 'block';
+		}
+
+		// Start AR function
+		/*async function startAR() {
+			try {
+				// Check for WebXR support
+				if ('xr' in navigator && 'isSessionSupported' in navigator.xr) {
+					let supported = await navigator.xr.isSessionSupported('immersive-ar');
+					if (supported) {
+						// Request AR session
+						session = await navigator.xr.requestSession('immersive-ar', {
+							requiredFeatures: ['hit-test']
+						});
+
+						// Set up video as the session's base layer
+						const canvas = document.createElement('canvas');
+						const gl = canvas.getContext('webgl', { xrCompatible: true });
+						session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
+
+						// Attach the video feed to a HTML Video element and the XRWebGLLayer
+						let videoElement = document.createElement('video');
+						videoElement.setAttribute('autoplay', '');
+						videoElement.setAttribute('muted', '');
+						videoElement.setAttribute('playsinline', '');
+						videoElement.srcObject = video.srcObject;
+
+						// Start the AR session
+						await session.requestReferenceSpace('viewer').then(referenceSpace => {
+							session.requestHitTest(new XRHitTestSource('viewer', referenceSpace)).then(hitTestSource => {
+								session.addEventListener('select', onSelect);
+							});
+						});
+
+						// Hide AR button during AR session
+						arButton.style.display = 'none';
+					} else {
+						console.error('AR not supported');
+					}
+				} else {
+					console.error('WebXR not supported');
+				}
+			} catch (error) {
+				console.error('Error starting AR session:', error);
+			}
+		}*/
+
+		async function startAR() {
+			try {
+				// Check for WebXR support
+				if ('xr' in navigator && 'isSessionSupported' in navigator.xr) {
+					let supported = await navigator.xr.isSessionSupported('immersive-ar');
+					if (supported) {
+						// Request AR session
+						session = await navigator.xr.requestSession('immersive-ar', {
+							requiredFeatures: ['hit-test'],
+						});
+
+						// Set up video as the session's base layer
+						const canvas = document.createElement('canvas');
+						const gl = canvas.getContext('webgl', { xrCompatible: true });
+						session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
+
+						// Attach the video feed to a HTML Video element and the XRWebGLLayer
+						let videoElement = document.createElement('video');
+						videoElement.setAttribute('autoplay', '');
+						videoElement.setAttribute('muted', '');
+						videoElement.setAttribute('playsinline', '');
+						videoElement.srcObject = video.srcObject;
+
+						// Start the AR session
+						await session.requestReferenceSpace('viewer').then((referenceSpace) => {
+							// Check if hit test is supported
+							if (session.requestHitTest) {
+								session.requestHitTest(new XRHitTestSource('viewer', referenceSpace)).then((hitTestSource) => {
+									session.addEventListener('select', onSelect);
+								});
+							} else {
+								console.error('Hit test not supported');
+								// Implement alternative object detection and placement logic here
+							}
+						});
+
+						// Hide AR button during AR session
+						arButton.style.display = 'none';
+					} else {
+						console.error('AR not supported');
+					}
+				} else {
+					console.error('WebXR not supported');
+				}
+			} catch (error) {
+				console.error('Error starting AR session:', error);
+			}
+		}
+
+		// Handle object selection in AR mode
+		async function onSelect(event) {
+			try {
+				// Perform object detection using TensorFlow.js and OpenCV.js
+				const src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+				const dst = new cv.Mat(video.height, video.width, cv.CV_8UC1);
+				const cap = new cv.VideoCapture(video);
+
+				const processFrame = () => {
+					cap.read(src);
+					cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+
+					model.detect(video).then(predictions => {
+						predictions.forEach(prediction => {
+							if (prediction.class === 'person' && prediction.score > 0.5) {
+								// Load and display 3D model
+								load3DModel();
+							}
+						});
+					});
+
+					requestAnimationFrame(processFrame);
+				};
+				processFrame();
+			} catch (error) {
+				console.error('Error detecting objects:', error);
+			}
+		}
+
+		// Initialize function when the document is ready
+		document.addEventListener('DOMContentLoaded', () => {
+			initialize().catch(error => console.error('Initialization error:', error));
+		});
+
+		// Function to load and display 3D model
+		function load3DModel() {
+			const scene = new THREE.Scene();
+			const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+			const renderer = new THREE.WebGLRenderer({ alpha: true });
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			document.body.appendChild(renderer.domElement);
+
+			const controls = new THREE.OrbitControls(camera, renderer.domElement);
+			camera.position.z = 5;
+
+			const loader = new THREE.GLTFLoader();
+			loader.load('3d/car.glb', function (gltf) {
+				const object = gltf.scene;
+				object.scale.set(0.5, 0.5, 0.5);
+				scene.add(object);
+
+				const animate = function () {
+					requestAnimationFrame(animate);
+					renderer.render(scene, camera);
+					controls.update();
+				};
+				animate();
+			}, undefined, function (error) {
+				console.error('Error loading 3D model:', error);
+			});
+		}
+	</script>
+</body>
+
+</html>
