@@ -18,6 +18,7 @@
 <body>
 	<button id="arButton">Enter AR</button>
 	<canvas id="xrCanvas"></canvas>
+	<script src="https://cdn.jsdelivr.net/npm/hammerjs@latest/hammer.min.js"></script>
 
 	<!-- WebXR Polyfill -->
 	<script src="https://cdn.jsdelivr.net/npm/webxr-polyfill@latest/build/webxr-polyfill.min.js"></script>
@@ -40,16 +41,6 @@
 		import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 
-		// Check for WebXR support
-		if (navigator.xr) {
-			navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
-				if (supported) {
-					document.getElementById('arButton').style.display = 'block';
-					document.getElementById('arButton').addEventListener('click', onButtonClicked);
-				}
-			});
-		}
-
 		let xrSession = null;
 		let xrRefSpace = null;
 		let gl = null;
@@ -57,9 +48,7 @@
 		let scene = null;
 		let camera = null;
 		let model = null;
-		let controls = null;
 
-		// Check for WebXR support
 		if (navigator.xr) {
 			navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
 				if (supported) {
@@ -92,13 +81,6 @@
 
 			loadModel();
 
-			// Add OrbitControls
-			controls = new OrbitControls(camera, renderer.domElement);
-
-			// Enable damping (inertia)
-			controls.enableDamping = true;
-			controls.dampingFactor = 0.25;
-
 			xrSession.updateRenderState({ baseLayer: new XRWebGLLayer(xrSession, gl) });
 
 			xrSession.requestReferenceSpace('local').then((refSpace) => {
@@ -130,8 +112,6 @@
 					camera.projectionMatrix.fromArray(view.projectionMatrix);
 					camera.updateMatrixWorld(true);
 
-					controls.update(); // Update the controls before rendering
-
 					renderer.render(scene, camera);
 				}
 			}
@@ -141,43 +121,48 @@
 			const loader = new GLTFLoader();
 			loader.load('3d/car.glb', function (gltf) {
 				model = gltf.scene;
-				model.scale.set(0.1, 0.1, 0.1); // Adjust scale as needed
+				model.scale.set(0.01, 0.01, 0.01); // Adjust scale to fit in the view
+				model.position.set(0, 0, 0); // Adjust position (x, y, z)
+
 				scene.add(model);
 
-				// Handle touch events for mobile
-				renderer.domElement.addEventListener('touchstart', onTouchStart, false);
-				renderer.domElement.addEventListener('touchmove', onTouchMove, false);
-				renderer.domElement.addEventListener('touchend', onTouchEnd, false);
+				// Initialize Hammer.js for touch interaction
+				setupHammer(renderer.domElement);
 			});
 		}
 
-		// Touch events handlers
-		let initialTouchX = 0;
-		let initialTouchY = 0;
+		function setupHammer(canvas) {
+			// Create a Hammer.js instance
+			const hammer = new Hammer(canvas);
 
-		function onTouchStart(event) {
-			if (event.touches.length === 1) { // Single touch
-				initialTouchX = event.touches[0].clientX;
-				initialTouchY = event.touches[0].clientY;
-			}
-		}
+			// Enable panning
+			hammer.get('pan').set({ direction: Hammer.DIRECTION_ALL });
 
-		function onTouchMove(event) {
-			if (event.touches.length === 1) { // Single touch
-				const deltaX = event.touches[0].clientX - initialTouchX;
-				const deltaY = event.touches[0].clientY - initialTouchY;
+			// Handle panning
+			hammer.on('panmove', (event) => {
+				if (model) {
+					model.rotation.y += event.deltaX * 0.005; // Rotate model horizontally
+					model.rotation.x += event.deltaY * 0.005; // Rotate model vertically
+				}
+			});
 
-				// Rotate the model based on touch move
-				model.rotation.y += deltaX * 0.005; // Adjust rotation speed
-				model.rotation.x += deltaY * 0.005;
+			// Enable pinch
+			hammer.get('pinch').set({ enable: true });
 
-				initialTouchX = event.touches[0].clientX;
-				initialTouchY = event.touches[0].clientY;
-			}
-		}
+			// Handle pinching
+			let initialScale = 1;
+			hammer.on('pinchstart', () => {
+				if (model) {
+					initialScale = model.scale.x; // Assume uniform scaling
+				}
+			});
 
-		function onTouchEnd(event) {
-			// You can add additional logic if needed when touch ends
+			hammer.on('pinchmove', (event) => {
+				if (model) {
+					const newScale = initialScale * event.scale;
+					model.scale.set(newScale, newScale, newScale); // Apply new scale uniformly
+				}
+			});
 		}
 
 	</script>
