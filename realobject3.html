@@ -68,7 +68,7 @@
 		}
 
 		// Start AR function
-		/*async function startAR() {
+		async function startAR() {
 			try {
 				// Check for WebXR support
 				if ('xr' in navigator && 'isSessionSupported' in navigator.xr) {
@@ -109,56 +109,8 @@
 			} catch (error) {
 				console.error('Error starting AR session:', error);
 			}
-		}*/
-
-		async function startAR() {
-			try {
-				// Check for WebXR support
-				if ('xr' in navigator && 'isSessionSupported' in navigator.xr) {
-					let supported = await navigator.xr.isSessionSupported('immersive-ar');
-					if (supported) {
-						// Request AR session
-						session = await navigator.xr.requestSession('immersive-ar', {
-							requiredFeatures: ['hit-test'],
-						});
-
-						// Set up video as the session's base layer
-						const canvas = document.createElement('canvas');
-						const gl = canvas.getContext('webgl', { xrCompatible: true });
-						session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
-
-						// Attach the video feed to a HTML Video element and the XRWebGLLayer
-						let videoElement = document.createElement('video');
-						videoElement.setAttribute('autoplay', '');
-						videoElement.setAttribute('muted', '');
-						videoElement.setAttribute('playsinline', '');
-						videoElement.srcObject = video.srcObject;
-
-						// Start the AR session
-						await session.requestReferenceSpace('viewer').then((referenceSpace) => {
-							// Check if hit test is supported
-							if (session.requestHitTest) {
-								session.requestHitTest(new XRHitTestSource('viewer', referenceSpace)).then((hitTestSource) => {
-									session.addEventListener('select', onSelect);
-								});
-							} else {
-								console.error('Hit test not supported');
-								// Implement alternative object detection and placement logic here
-							}
-						});
-
-						// Hide AR button during AR session
-						arButton.style.display = 'none';
-					} else {
-						console.error('AR not supported');
-					}
-				} else {
-					console.error('WebXR not supported');
-				}
-			} catch (error) {
-				console.error('Error starting AR session:', error);
-			}
 		}
+
 
 		// Handle object selection in AR mode
 		async function onSelect(event) {
