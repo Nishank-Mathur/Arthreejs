@@ -2,10 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WEBXR AR</title>
-    <link rel="stylesheet" href="style.css" />
+
   </head>
   <body>
     <!--<div id="app"></div>-->
@@ -60,9 +60,9 @@ let gltfLoader = new GLTFLoader();
 //gltfLoader.setDRACOLoader(dracoLoader)
 
 
-gltfLoader.load('../webxr-ar-ajith/3d/1.glb', onLoad);
-gltfLoader.load('../webxr-ar-ajith/3d/2.glb', onLoad);
-gltfLoader.load('../webxr-ar-ajith/3d/3.glb', onLoad);
+gltfLoader.load('3d/1.glb', onLoad);
+gltfLoader.load('3d/2.glb', onLoad);
+gltfLoader.load('3d/3.glb', onLoad);
 
 
 function onLoad(gltf) {
