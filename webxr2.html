@@ -91,6 +91,13 @@
 
 			let flower;
 			loader.load("3d/car.glb", function (gltf) {
+					gltf.scene.traverse((child) => {
+							if (child.isMesh && child.material.name === 'M4xNME_GlassClear') {
+								child.material.transparent = true;
+								child.material.opacity = 0.3;
+								child.material.blending = THREE.NormalBlending;
+							}
+						});
 				flower = gltf.scene;
 			});
 
