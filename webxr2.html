@@ -49,11 +49,8 @@
 			// Initialize a WebXR session using "immersive-ar".
 			//const session = await navigator.xr.requestSession("immersive-ar", { requiredFeatures: ['hit-test'] });
 
-			const session = await navigator.xr.requestSession("immersive-ar");
-			session.updateRenderState({
-				requiredFeatures: ['hit-test'],
-				baseLayer: new XRWebGLLayer(session, gl)
-			});
+				const session = await navigator.xr.requestSession("immersive-ar", { requiredFeatures: ['hit-test'] });
+			session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
 
 
 			// A 'local' reference space has a native origin that is located
