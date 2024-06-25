@@ -15,11 +15,11 @@
 	<button onclick="activateXR()">Start AR</button>
 	<script>
 		let scene, renderer, camera, model, controls;
-
+		let canvas, gl;
 		async function activateXR() {
-			const canvas = document.createElement("canvas");
-			document.body.appendChild(canvas);
-			const gl = canvas.getContext("webgl", { xrCompatible: true });
+			canvas = document.createElement("canvas");
+
+			gl = canvas.getContext("webgl", { xrCompatible: true });
 
 			scene = new THREE.Scene();
 
@@ -43,12 +43,15 @@
 			scene.add(directionalLight);
 
 			renderer = new THREE.WebGLRenderer({
+				antialias: true,
 				alpha: true,
 				preserveDrawingBuffer: true,
 				canvas: canvas,
 				context: gl
 			});
 			renderer.autoClear = false;
+
+			document.body.appendChild(canvas, renderer.domElement);
 
 			camera = new THREE.PerspectiveCamera();
 			camera.matrixAutoUpdate = false;
