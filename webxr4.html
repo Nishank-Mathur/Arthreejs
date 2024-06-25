@@ -143,6 +143,9 @@
 			};
 
 			session.requestAnimationFrame(onXRFrame);
+			renderer.domElement.addEventListener('touchstart', function (e) {
+				alert('touching');
+			}, false);
 		}
 
 		
