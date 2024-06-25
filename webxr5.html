@@ -157,14 +157,12 @@
 				alert('touch start');
 			}, { passive: false });*/
 
-			const el = document.querySelector("canvas");
-			el.addEventListener("touchstart", handleStart);
 
 			session.requestAnimationFrame(onXRFrame);
 		}
 
 
-
+		canvas.addEventListener("touchstart", handleStart(e));
 
 		function handleStart(e) {
 			alert('checking touch');
