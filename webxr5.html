@@ -115,13 +115,8 @@
 				}
 			});
 
-			session.addEventListener("click", async () => {
-				try {
-					alert('click call');
-				} catch (error) {
-					console.error('Error loading model:', error);
-				}
-			});
+			const raycaster = new THREE.Raycaster();
+			const touch = new THREE.Vector2();
 
 			const onXRFrame = (time, frame) => {
 				session.requestAnimationFrame(onXRFrame);
@@ -158,11 +153,28 @@
 				}
 			};
 
-			/*renderer.domElement.addEventListener('touchstart', function (e) {
+			renderer.domElement.addEventListener('touchstart', function (e) {
 				e.preventDefault();
 				e.stopPropagation();
-				alert('touch start');
-			}, { passive: false });*/
+
+				touch.x = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
+				touch.y = -(e.touches[0].clientY / window.innerHeight) * 2 + 1;
+
+				raycaster.setFromCamera(touch, camera);
+
+				const intersects = raycaster.intersectObjects(scene.children, true); // Check against all objects in the scene
+
+				if (intersects.length > 0) {
+					const intersectedObject = intersects[0].object;
+					if (intersectedObject === model) {
+						alert('Touched the 3D model!');
+					} else {
+						alert('Touched outside the 3D model.');
+					}
+				} else {
+					console.log('No intersection.');
+				}
+			}, { passive: false });
 
 
 			session.requestAnimationFrame(onXRFrame);
