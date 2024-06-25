@@ -8,12 +8,14 @@
 	<title>WebXR</title>
 	<script src="https://unpkg.com/three@0.126.0/build/three.js"></script>
 	<script src="https://unpkg.com/three@0.126.0/examples/js/loaders/GLTFLoader.js"></script>
+	<script src="https://unpkg.com/three@0.126.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 
 <body>
 	<button onclick="activateXR()">Start AR</button>
 	<script>
-		let scene, renderer, camera, model;
+		let scene, renderer, camera, model, controls;
+
 		async function activateXR() {
 			const canvas = document.createElement("canvas");
 			document.body.appendChild(canvas);
@@ -50,6 +52,11 @@
 
 			camera = new THREE.PerspectiveCamera();
 			camera.matrixAutoUpdate = false;
+
+			// Initialize OrbitControls
+			controls = new THREE.OrbitControls(camera, renderer.domElement);
+			controls.target.set(0, 0, 0); // Set the center of orbit
+			controls.update();
 
 			const session = await navigator.xr.requestSession("immersive-ar", { requiredFeatures: ['hit-test'] });
 			session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
@@ -117,6 +124,8 @@
 					camera.projectionMatrix.fromArray(view.projectionMatrix);
 					camera.updateMatrixWorld(true);
 
+					controls.update(); // Update OrbitControls
+
 					const hitTestResults = frame.getHitTestResults(hitTestSource);
 					if (hitTestResults.length > 0 && reticle) {
 						const hitPose = hitTestResults[0].getPose(referenceSpace);
@@ -134,6 +143,14 @@
 					renderer.render(scene, camera);
 				}
 			};
+
+			renderer.domElement.addEventListener('touchstart', function (e) {
+				e.preventDefault();
+				alert('touch start');
+				//touchDown = true;
+				//touchX = e.touches[0].pageX;
+				//touchY = e.touches[0].pageY;
+			}, false);
 
 			session.requestAnimationFrame(onXRFrame);
 		}
