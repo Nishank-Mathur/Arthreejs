@@ -157,11 +157,13 @@
 				alert('touch start');
 			}, { passive: false });*/
 
+			const el = document.querySelector("canvas");
+			el.addEventListener("touchstart", handleStart);
+
 			session.requestAnimationFrame(onXRFrame);
 		}
 
-		const el = document.querySelector("canvas");
-		el.addEventListener("touchstart", handleStart);
+
 
 
 		function handleStart(e) {
