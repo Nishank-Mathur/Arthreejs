@@ -8,20 +8,17 @@
 	<title>WebXR</title>
 	<script src="https://unpkg.com/three@0.126.0/build/three.js"></script>
 	<script src="https://unpkg.com/three@0.126.0/examples/js/loaders/GLTFLoader.js"></script>
-	<script src="https://unpkg.com/three@0.126.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 
 <body>
-	<button onclick="activateXR()">Start AR</button>
+	<button onclick="activateXR()">Start WebXR</button>
 	<script>
-		let scene, renderer, camera, model, controls;
-		let canvas, gl;
 		async function activateXR() {
-			canvas = document.createElement("canvas");
+			const canvas = document.createElement("canvas");
+			document.body.appendChild(canvas);
+			const gl = canvas.getContext("webgl", { xrCompatible: true });
 
-			gl = canvas.getContext("webgl", { xrCompatible: true });
-
-			scene = new THREE.Scene();
+			const scene = new THREE.Scene();
 
 			const light = new THREE.AmbientLight(0xffffff, 1);
 			const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
@@ -42,8 +39,7 @@
 			scene.add(light);
 			scene.add(directionalLight);
 
-			renderer = new THREE.WebGLRenderer({
-				antialias: true,
+			const renderer = new THREE.WebGLRenderer({
 				alpha: true,
 				preserveDrawingBuffer: true,
 				canvas: canvas,
@@ -51,15 +47,8 @@
 			});
 			renderer.autoClear = false;
 
-			document.body.appendChild(canvas, renderer.domElement);
-
-			camera = new THREE.PerspectiveCamera();
+			const camera = new THREE.PerspectiveCamera();
 			camera.matrixAutoUpdate = false;
-
-			// Initialize OrbitControls
-			controls = new THREE.OrbitControls(camera, renderer.domElement);
-			controls.target.set(0, 0, 0); // Set the center of orbit
-			controls.update();
 
 			const session = await navigator.xr.requestSession("immersive-ar", { requiredFeatures: ['hit-test'] });
 			session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
@@ -91,7 +80,10 @@
 				}
 				return new Promise((resolve, reject) => {
 					loader.load(modelPaths[modelIndex], function (gltf) {
-						model = gltf.scene;
+						const model = gltf.scene;
+						model.addEventListener('touchstart', onTouchStart, false);
+						model.addEventListener('touchmove', onTouchMove, false);
+						model.addEventListener('touchend', onTouchEnd, false);
 						resolve(model);
 					}, undefined, function (error) {
 						reject(error);
@@ -102,9 +94,9 @@
 			session.addEventListener("select", async () => {
 				try {
 					if (reticle.visible) {
-						const modelplace = await loadNextModel();
-						modelplace.position.copy(reticle.position);
-						scene.add(modelplace);
+						const model = await loadNextModel();
+						model.position.copy(reticle.position);
+						scene.add(model);
 						modelIndex++;
 					}
 				} catch (error) {
@@ -127,8 +119,6 @@
 					camera.projectionMatrix.fromArray(view.projectionMatrix);
 					camera.updateMatrixWorld(true);
 
-					controls.update(); // Update OrbitControls
-
 					const hitTestResults = frame.getHitTestResults(hitTestSource);
 					if (hitTestResults.length > 0 && reticle) {
 						const hitPose = hitTestResults[0].getPose(referenceSpace);
@@ -147,16 +137,30 @@
 				}
 			};
 
-			renderer.domElement.addEventListener('touchstart', function (e) {
-				e.preventDefault();
-				e.stopPropagation();
-				alert('touch start');
-			}, { passive: false });
-
 			session.requestAnimationFrame(onXRFrame);
 		}
 
 
+		function onTouchStart(event) {
+			event.preventDefault();
+			const target = event.target;
+			console.log(`Touch started on model ${target.name}`);
+			// Add logic to place a model or initiate an action
+		}
+
+		function onTouchMove(event) {
+			event.preventDefault();
+			const target = event.target;
+			console.log(`Touch moved on model ${target.name}`);
+			// Add logicto move an object or handle gestures
+		}
+
+		function onTouchEnd(event) {
+			event.preventDefault();
+			const target = event.target;
+			console.log(`Touch ended on model ${target.name}`);
+			// Add logic to finalize placing or interacting with an object
+		}
 	</script>
 </body>
 
