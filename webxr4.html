@@ -13,10 +13,12 @@
 <body>
 	<button onclick="activateXR()">Start WebXR</button>
 	<script>
+
+		let canvas, gl, model;
 		async function activateXR() {
-			const canvas = document.createElement("canvas");
+			canvas = document.createElement("canvas");
 			document.body.appendChild(canvas);
-			const gl = canvas.getContext("webgl", { xrCompatible: true });
+			gl = canvas.getContext("webgl", { xrCompatible: true });
 
 			const scene = new THREE.Scene();
 
@@ -80,7 +82,7 @@
 				}
 				return new Promise((resolve, reject) => {
 					loader.load(modelPaths[modelIndex], function (gltf) {
-						const model = gltf.scene;
+						model = gltf.scene;
 						model.addEventListener('touchstart', onTouchStart, false);
 						model.addEventListener('touchmove', onTouchMove, false);
 						model.addEventListener('touchend', onTouchEnd, false);
@@ -94,9 +96,9 @@
 			session.addEventListener("select", async () => {
 				try {
 					if (reticle.visible) {
-						const model = await loadNextModel();
-						model.position.copy(reticle.position);
-						scene.add(model);
+						const placemodel = await loadNextModel();
+						placemodel.position.copy(reticle.position);
+						scene.add(placemodel);
 						modelIndex++;
 					}
 				} catch (error) {
@@ -138,12 +140,10 @@
 			};
 
 			session.requestAnimationFrame(onXRFrame);
-			console.log(gl);
 		}
 
 
 		function onTouchStart(event) {
-			alert('touch click');
 			event.preventDefault();
 			const target = event.target;
 			console.log(`Touch started on model ${target.name}`);
