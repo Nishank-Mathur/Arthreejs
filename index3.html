@@ -216,7 +216,6 @@
 			window.addEventListener('resize', onWindowResize);
 
 			renderer.domElement.addEventListener('touchstart', function (e) {
-				alert('touch checking');
 				e.preventDefault();
 				touchDown = true;
 				touchX = e.touches[0].pageX;
