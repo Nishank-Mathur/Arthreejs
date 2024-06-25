@@ -151,16 +151,22 @@
 				}
 			};
 
-			renderer.domElement.addEventListener('touchstart', function (e) {
+			/*renderer.domElement.addEventListener('touchstart', function (e) {
 				e.preventDefault();
 				e.stopPropagation();
 				alert('touch start');
-			}, { passive: false });
+			}, { passive: false });*/
 
 			session.requestAnimationFrame(onXRFrame);
 		}
 
+		const el = document.querySelector("canvas");
+		el.addEventListener("touchstart", handleStart);
 
+
+		function handleStart(e) {
+			alert('checking touch');
+		}
 	</script>
 </body>
 
