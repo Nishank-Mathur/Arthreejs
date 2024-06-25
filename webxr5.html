@@ -113,7 +113,14 @@
 				} catch (error) {
 					console.error('Error loading model:', error);
 				}
-				//alert('touch start');
+			});
+
+			session.addEventListener("click", async () => {
+				try {
+					alert('click call');
+				} catch (error) {
+					console.error('Error loading model:', error);
+				}
 			});
 
 			const onXRFrame = (time, frame) => {
@@ -161,12 +168,6 @@
 			session.requestAnimationFrame(onXRFrame);
 		}
 
-
-		canvas.addEventListener("touchstart", handleStart(e));
-
-		function handleStart(e) {
-			alert('checking touch');
-		}
 	</script>
 </body>
 
