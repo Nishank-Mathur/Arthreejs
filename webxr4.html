@@ -96,6 +96,7 @@
 			session.addEventListener("select", async () => {
 				try {
 					if (reticle.visible) {
+						alert('click reticle');
 						const placemodel = await loadNextModel();
 						placemodel.position.copy(reticle.position);
 						scene.add(placemodel);
