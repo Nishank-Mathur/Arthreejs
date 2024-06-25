@@ -13,6 +13,10 @@
 <body>
 	<button onclick="activateXR()">Start WebXR</button>
 	<script>
+
+		let raycaster = new THREE.Raycaster();
+		let touch = new THREE.Vector2();
+
 		async function activateXR() {
 			const canvas = document.createElement("canvas");
 			document.body.appendChild(canvas);
@@ -96,17 +100,9 @@
 						scene.add(model);
 						modelIndex++;
 					}
-					alert('hello touch');
-				} catch (error) {
-					console.error('Error loading model:', error);
-				}
-			});
-
-			session.addEventListener("touchstart", async () => {
-				try {
-					
-						alert('touch click');
-					
+						canvas.addEventListener('touchstart', onTouchStart, false);
+		canvas.addEventListener('touchmove', onTouchMove, false);
+		canvas.addEventListener('touchend', onTouchEnd, false);
 				} catch (error) {
 					console.error('Error loading model:', error);
 				}
@@ -149,12 +145,7 @@
 			session.requestAnimationFrame(onXRFrame);
 		}
 
-		let raycaster = new THREE.Raycaster();
-		let touch = new THREE.Vector2();
-
-		canvas.addEventListener('touchstart', onTouchStart, false);
-		canvas.addEventListener('touchmove', onTouchMove, false);
-		canvas.addEventListener('touchend', onTouchEnd, false);
+		
 
 		function getIntersects(touch, camera, objects) {
 			touch.x = (touch.clientX / window.innerWidth) * 2 - 1;
@@ -164,6 +155,7 @@
 		}
 
 		function onTouchStart(event) {
+			alert('touch start function');
 			event.preventDefault();
 			const touch = event.changedTouches[0];
 			const intersects = getIntersects(touch, camera, scene.children);
