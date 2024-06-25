@@ -83,9 +83,9 @@
 				return new Promise((resolve, reject) => {
 					loader.load(modelPaths[modelIndex], function (gltf) {
 						model = gltf.scene;
-						model.addEventListener('touchstart', onTouchStart, false);
-						model.addEventListener('touchmove', onTouchMove, false);
-						model.addEventListener('touchend', onTouchEnd, false);
+						//model.addEventListener('touchstart', onTouchStart, false);
+						//model.addEventListener('touchmove', onTouchMove, false);
+						//model.addEventListener('touchend', onTouchEnd, false);
 						resolve(model);
 					}, undefined, function (error) {
 						reject(error);
@@ -96,7 +96,6 @@
 			session.addEventListener("select", async () => {
 				try {
 					if (reticle.visible) {
-						alert('click reticle');
 						const placemodel = await loadNextModel();
 						placemodel.position.copy(reticle.position);
 						scene.add(placemodel);
@@ -141,6 +140,10 @@
 			};
 
 			session.requestAnimationFrame(onXRFrame);
+
+			canvas.addEventListener('touchstart', onTouchStart, false);
+			canvas.addEventListener('touchmove', onTouchMove, false);
+			canvas.addEventListener('touchend', onTouchEnd, false);
 		}
 
 
