@@ -13,12 +13,10 @@
 <body>
 	<button onclick="activateXR()">Start WebXR</button>
 	<script>
-
-		let canvas, gl, model;
 		async function activateXR() {
-			canvas = document.createElement("canvas");
+			const canvas = document.createElement("canvas");
 			document.body.appendChild(canvas);
-			gl = canvas.getContext("webgl", { xrCompatible: true });
+			const gl = canvas.getContext("webgl", { xrCompatible: true });
 
 			const scene = new THREE.Scene();
 
@@ -82,7 +80,7 @@
 				}
 				return new Promise((resolve, reject) => {
 					loader.load(modelPaths[modelIndex], function (gltf) {
-						model = gltf.scene;
+						const model = gltf.scene;
 						//model.addEventListener('touchstart', onTouchStart, false);
 						//model.addEventListener('touchmove', onTouchMove, false);
 						//model.addEventListener('touchend', onTouchEnd, false);
@@ -96,9 +94,9 @@
 			session.addEventListener("select", async () => {
 				try {
 					if (reticle.visible) {
-						const placemodel = await loadNextModel();
-						placemodel.position.copy(reticle.position);
-						scene.add(placemodel);
+						const model = await loadNextModel();
+						model.position.copy(reticle.position);
+						scene.add(model);
 						modelIndex++;
 					}
 				} catch (error) {
@@ -140,41 +138,40 @@
 			};
 
 			session.requestAnimationFrame(onXRFrame);
-
-			canvas.addEventListener('touchstart', onTouchStart, false);
-			canvas.addEventListener('touchmove', onTouchMove, false);
-			canvas.addEventListener('touchend', onTouchEnd, false);
 		}
 
+		let raycaster = new THREE.Raycaster();
+		let touch = new THREE.Vector2();
 
-		let offsetX = 0, offsetY = 0;
+		canvas.addEventListener('touchstart', onTouchStart, false);
+		canvas.addEventListener('touchmove', onTouchMove, false);
+		canvas.addEventListener('touchend', onTouchEnd, false);
+
+		function getIntersects(touch, camera, objects) {
+			touch.x = (touch.clientX / window.innerWidth) * 2 - 1;
+			touch.y = - (touch.clientY / window.innerHeight) * 2 + 1;
+			raycaster.setFromCamera(touch, camera);
+			return raycaster.intersectObjects(objects, true);
+		}
 
 		function onTouchStart(event) {
 			event.preventDefault();
-			const touches = event.touches;
-			if (touches.length === 1) { // Single touch
-				selectedModel = event.target;
-				const rect = selectedModel.getBoundingClientRect();
-				offsetX = touches[0].clientX - rect.left;
-				offsetY = touches[0].clientY - rect.top;
+			const touch = event.changedTouches[0];
+			const intersects = getIntersects(touch, camera, scene.children);
+			if (intersects.length > 0) {
+				selectedModel = intersects[0].object;
 				console.log(`Touch started on model ${selectedModel.name}`);
-			} else if (touches.length === 2) { // Two-finger touch
-				// Add logic for gestures like pinch-to-zoom or rotate
 			}
 		}
 
 		function onTouchMove(event) {
 			event.preventDefault();
 			if (selectedModel) {
-				const touches = event.touches;
-				if (touches.length === 1) { // Single touch
-					selectedModel.position.x = touches[0].clientX - offsetX;
-					selectedModel.position.z = touches[0].clientY - offsetY;
-					selectedModel.updateMatrixWorld(true);
-					console.log(`Touch moved on model ${selectedModel.name}`);
-				} else if (touches.length === 2) { // Two-finger touch
-					// Add logic for gestures like pinch-to-zoom or rotate
-				}
+				const touch = event.changedTouches[0];
+				selectedModel.position.x = touch.clientX;
+				selectedModel.position.y = touch.clientY;
+				selectedModel.updateMatrixWorld(true);
+				console.log(`Touch moved on model ${selectedModel.name}`);
 			}
 		}
 
