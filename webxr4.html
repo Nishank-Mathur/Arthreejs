@@ -13,10 +13,6 @@
 <body>
 	<button onclick="activateXR()">Start WebXR</button>
 	<script>
-
-		let raycaster = new THREE.Raycaster();
-		let touch = new THREE.Vector2();
-
 		async function activateXR() {
 			const canvas = document.createElement("canvas");
 			document.body.appendChild(canvas);
@@ -100,14 +96,10 @@
 						scene.add(model);
 						modelIndex++;
 					}
-						canvas.addEventListener('touchstart', onTouchStart, false);
-		canvas.addEventListener('touchmove', onTouchMove, false);
-		canvas.addEventListener('touchend', onTouchEnd, false);
 				} catch (error) {
 					console.error('Error loading model:', error);
 				}
 			});
-
 
 			const onXRFrame = (time, frame) => {
 				session.requestAnimationFrame(onXRFrame);
@@ -143,49 +135,9 @@
 			};
 
 			session.requestAnimationFrame(onXRFrame);
-			renderer.domElement.addEventListener('touchstart', function (e) {
-				alert('touching');
-			}, false);
 		}
 
-		
 
-		function getIntersects(touch, camera, objects) {
-			touch.x = (touch.clientX / window.innerWidth) * 2 - 1;
-			touch.y = - (touch.clientY / window.innerHeight) * 2 + 1;
-			raycaster.setFromCamera(touch, camera);
-			return raycaster.intersectObjects(objects, true);
-		}
-
-		function onTouchStart(event) {
-			alert('touch start function');
-			event.preventDefault();
-			const touch = event.changedTouches[0];
-			const intersects = getIntersects(touch, camera, scene.children);
-			if (intersects.length > 0) {
-				selectedModel = intersects[0].object;
-				console.log(`Touch started on model ${selectedModel.name}`);
-			}
-		}
-
-		function onTouchMove(event) {
-			event.preventDefault();
-			if (selectedModel) {
-				const touch = event.changedTouches[0];
-				selectedModel.position.x = touch.clientX;
-				selectedModel.position.y = touch.clientY;
-				selectedModel.updateMatrixWorld(true);
-				console.log(`Touch moved on model ${selectedModel.name}`);
-			}
-		}
-
-		function onTouchEnd(event) {
-			event.preventDefault();
-			if (selectedModel) {
-				console.log(`Touch ended on model ${selectedModel.name}`);
-				selectedModel = null;
-			}
-		}
 	</script>
 </body>
 
