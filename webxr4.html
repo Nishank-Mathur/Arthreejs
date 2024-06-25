@@ -144,18 +144,16 @@
 				}
 			};
 
+			// Add touch event listener to renderer's canvas element
 			renderer.domElement.addEventListener('touchstart', function (e) {
-				e.preventDefault();
-				alert('touch start');
-				//touchDown = true;
-				//touchX = e.touches[0].pageX;
-				//touchY = e.touches[0].pageY;
+				e.preventDefault(); // Prevent default touch behavior
+				alert('touch check');
+				console.log('Touch start:', e.touches[0].clientX, e.touches[0].clientY);
+				// Handle touch start logic here
 			}, false);
 
 			session.requestAnimationFrame(onXRFrame);
 		}
-
-
 	</script>
 </body>
 
