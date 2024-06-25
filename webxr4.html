@@ -143,25 +143,43 @@
 		}
 
 
+		let offsetX = 0, offsetY = 0;
+
 		function onTouchStart(event) {
 			event.preventDefault();
-			const target = event.target;
-			console.log(`Touch started on model ${target.name}`);
-			// Add logic to place a model or initiate an action
+			const touches = event.touches;
+			if (touches.length === 1) { // Single touch
+				selectedModel = event.target;
+				const rect = selectedModel.getBoundingClientRect();
+				offsetX = touches[0].clientX - rect.left;
+				offsetY = touches[0].clientY - rect.top;
+				console.log(`Touch started on model ${selectedModel.name}`);
+			} else if (touches.length === 2) { // Two-finger touch
+				// Add logic for gestures like pinch-to-zoom or rotate
+			}
 		}
 
 		function onTouchMove(event) {
 			event.preventDefault();
-			const target = event.target;
-			console.log(`Touch moved on model ${target.name}`);
-			// Add logicto move an object or handle gestures
+			if (selectedModel) {
+				const touches = event.touches;
+				if (touches.length === 1) { // Single touch
+					selectedModel.position.x = touches[0].clientX - offsetX;
+					selectedModel.position.z = touches[0].clientY - offsetY;
+					selectedModel.updateMatrixWorld(true);
+					console.log(`Touch moved on model ${selectedModel.name}`);
+				} else if (touches.length === 2) { // Two-finger touch
+					// Add logic for gestures like pinch-to-zoom or rotate
+				}
+			}
 		}
 
 		function onTouchEnd(event) {
 			event.preventDefault();
-			const target = event.target;
-			console.log(`Touch ended on model ${target.name}`);
-			// Add logic to finalize placing or interacting with an object
+			if (selectedModel) {
+				console.log(`Touch ended on model ${selectedModel.name}`);
+				selectedModel = null;
+			}
 		}
 	</script>
 </body>
