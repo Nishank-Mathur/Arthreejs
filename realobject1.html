@@ -245,7 +245,7 @@
 			scene.add(DirectionalLight);
 
 			const loader = new THREE.GLTFLoader();
-			loader.load('3d/5.glb', function (gltf) {
+			loader.load('3d/person.glb', function (gltf) {
 				modelInstance = gltf.scene;
 				modelInstance.scale.set(0.6, 0.6, 0.6);
 				scene.add(modelInstance);
