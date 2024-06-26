@@ -224,6 +224,12 @@
 			document.getElementById('objectcontainer').style.display = 'none';
 			document.getElementById('arbtn').style.display = 'block';
 
+			// Stop the webcam
+			const videoElement = document.getElementById('videoElement');
+			if (videoElement.srcObject) {
+				videoElement.srcObject.getTracks().forEach(track => track.stop());
+			}
+
 			const container = document.getElementById('model3DContainer');
 			container.innerHTML = ''; // Clear previous model
 
@@ -260,7 +266,8 @@
 			const loader = new THREE.GLTFLoader();
 			loader.load('3d/person.glb', function (gltf) {
 				modelInstance = gltf.scene;
-				modelInstance.scale.set(2, 2, 2);
+				// Set a larger scale for the web context
+				modelInstance.scale.set(2, 2, 2); // Adjust as needed for larger size
 				scene.add(modelInstance);
 
 				const annotations = [
@@ -382,8 +389,8 @@
 			session.addEventListener("select", () => {
 				if (modelInstance && reticle.visible) {
 					const clone = modelInstance.clone();
+					clone.scale.set(0.5, 0.5, 0.5); // Smaller scale for AR context
 					//clone.position.copy(reticle.position);
-					clone.scale.set(0.8, 0.8, 0.8);
 					scene.add(clone);
 				}
 			});
