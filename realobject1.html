@@ -274,10 +274,12 @@
 		}
 
 		async function activateXR() {
+			// Add a canvas element and initialize a WebGL context that is compatible with WebXR.
 			const canvas = document.createElement("canvas");
 			document.body.appendChild(canvas);
 			const gl = canvas.getContext("webgl", { xrCompatible: true });
 
+			// To be continued in upcoming steps.
 			const scene = new THREE.Scene();
 
 			const light = new THREE.AmbientLight(0xffffff, 1);
@@ -310,6 +312,7 @@
 			scene.add(light);
 			scene.add(directionalLight);
 
+			// Set up the WebGLRenderer, which handles rendering to the session's base layer.
 			const renderer = new THREE.WebGLRenderer({
 				alpha: true,
 				preserveDrawingBuffer: true,
@@ -318,59 +321,86 @@
 			});
 			renderer.autoClear = false;
 
+			// Initialize a camera for Three.js.
 			const camera = new THREE.PerspectiveCamera();
 			camera.matrixAutoUpdate = false;
 
+			// Request an immersive-ar session.
 			const session = await navigator.xr.requestSession("immersive-ar", { requiredFeatures: ['hit-test'] });
 			session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
 
+			// Create reference spaces.
 			const referenceSpace = await session.requestReferenceSpace('local');
 			const viewerSpace = await session.requestReferenceSpace('viewer');
+
+			// Create a hit test source.
 			const hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
 
-			let reticle;
 			const loader = new THREE.GLTFLoader();
+			let reticle;
 			loader.load("https://immersive-web.github.io/webxr-samples/media/gltf/reticle/reticle.gltf", function (gltf) {
 				reticle = gltf.scene;
 				reticle.visible = false;
 				scene.add(reticle);
+			})
+
+			let flower;
+			loader.load("3d/person.glb", function (gltf) {
+				gltf.scene.traverse((child) => {
+				flower = gltf.scene;
 			});
 
+			// Handle selection events.
 			session.addEventListener("select", () => {
-				if (modelInstance && reticle.visible) {
-					const clone = modelInstance.clone();
-					//clone.position.copy(reticle.position);
+				if (flower && reticle.visible) {
+					const clone = flower.clone();
+					clone.position.copy(reticle.position);
 					scene.add(clone);
 				}
 			});
 
+			// Create a render loop that allows us to draw on the AR view.
 			const onXRFrame = (time, frame) => {
+				// Queue up the next draw request.
 				session.requestAnimationFrame(onXRFrame);
-				gl.bindFramebuffer(gl.FRAMEBUFFER, session.renderState.baseLayer.framebuffer);
 
+				// Bind the graphics framebuffer to the baseLayer's framebuffer
+				gl.bindFramebuffer(gl.FRAMEBUFFER, session.renderState.baseLayer.framebuffer)
+
+				// Retrieve the pose of the device.
+				// XRFrame.getViewerPose can return null while the session attempts to establish tracking.
 				const pose = frame.getViewerPose(referenceSpace);
 				if (pose) {
+					// In mobile AR, we only have one view.
 					const view = pose.views[0];
-					const viewport = session.renderState.baseLayer.getViewport(view);
-					renderer.setSize(viewport.width, viewport.height);
 
-					camera.matrix.fromArray(view.transform.matrix);
+					const viewport = session.renderState.baseLayer.getViewport(view);
+					renderer.setSize(viewport.width, viewport.height)
+
+					// Use the view's transform matrix and projection matrix to configure the THREE.camera.
+					camera.matrix.fromArray(view.transform.matrix)
 					camera.projectionMatrix.fromArray(view.projectionMatrix);
 					camera.updateMatrixWorld(true);
+
 
 					const hitTestResults = frame.getHitTestResults(hitTestSource);
 					if (hitTestResults.length > 0 && reticle) {
 						const hitPose = hitTestResults[0].getPose(referenceSpace);
 						reticle.visible = true;
-						reticle.position.set(hitPose.transform.position.x, hitPose.transform.position.y, hitPose.transform.position.z);
+						reticle.position.set(
+							hitPose.transform.position.x,
+							hitPose.transform.position.y,
+							hitPose.transform.position.z
+						);
 						reticle.updateMatrixWorld(true);
 					} else if (reticle) {
 						reticle.visible = false;
 					}
 
-					renderer.render(scene, camera);
+					// Render the scene with THREE.WebGLRenderer.
+					renderer.render(scene, camera)
 				}
-			};
+			}
 			session.requestAnimationFrame(onXRFrame);
 		}
 	</script>
