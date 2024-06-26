@@ -383,6 +383,7 @@
 				if (modelInstance && reticle.visible) {
 					const clone = modelInstance.clone();
 					//clone.position.copy(reticle.position);
+					clone.scale.set(0.8, 0.8, 0.8);
 					scene.add(clone);
 				}
 			});
